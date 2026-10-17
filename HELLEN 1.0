@@ -1,0 +1,312 @@
+import streamlit as st
+import numpy as np
+
+# Configuración inicial de la página
+st.set_page_config(
+    page_title="Calculadora de Seguridad Vial - AASHTO & SAE",
+    page_icon="🛣️",
+    layout="wide"
+)
+
+# Estilos CSS personalizados para la interfaz
+st.markdown("""
+    <style>
+    .main-title { font-size: 32px; font-weight: bold; color: #1E3A8A; text-align: center; }
+    .sub-title { font-size: 18px; color: #4B5563; text-align: center; margin-bottom: 25px; }
+    .card { background-color: #F3F4F6; padding: 20px; border-radius: 10px; margin-bottom: 15px; }
+    .stButton>button { width: 100%; border-radius: 8px; font-weight: bold; }
+    </style>
+""", unsafe_allow_html=True)
+
+# Inicialización del estado de navegación
+if 'pantalla' not in st.session_state:
+    st.session_state.pantalla = 'bienvenida'
+if 'modelo_seleccionado' not in st.session_state:
+    st.session_state.modelo_seleccionado = None
+
+# Función de navegación
+def ir_a(pantalla, modelo=None):
+    st.session_state.pantalla = pantalla
+    if modelo:
+        st.session_state.modelo_seleccionado = modelo
+
+# ==========================================
+# 1. PANTALLA DE BIENVENIDA
+# ==========================================
+if st.session_state.pantalla == 'bienvenida':
+    st.markdown("<div class='main-title'>🛣️ Sistema de Determinación y Predicción de Siniestros Viales</div>", unsafe_allow_html=True)
+    st.markdown("<div class='sub-title'>Plataforma de Cálculo Basada en Estándares AASHTO, SAE y NTSB (Incluye Vehículos Pesados y Articulados)</div>", unsafe_allow_html=True)
+    
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        st.info("""
+        **Bienvenido a la Suite de Ingeniería Vial**
+        
+        Esta aplicación integra los modelos matemáticos e investigativos internacionales para:
+        * Predicción de frecuencia de accidentes (*AASHTO Highway Safety Manual*).
+        * Estimación de Máxima Verosimilitud (MLE).
+        * Método Bayesiano Empírico (Puntos Negros).
+        * Severidad de Lesiones y Cinemática de Frenado.
+        * **Frenado y Dinámica de Vehículos Pesados y Articulados (Tractocamiones).**
+        """)
+        
+        if st.button("🚀 Ingresar al Menú Principal", use_container_width=True):
+            ir_a('menu')
+
+# ==========================================
+# 2. MENÚ PRINCIPAL
+# ==========================================
+elif st.session_state.pantalla == 'menu':
+    st.markdown("<div class='main-title'>📂 Menú Principal - Selección de Modelo</div>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center;'>Seleccione el modelo técnico que desea ejecutar:</p>", unsafe_allow_html=True)
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("### 📊 Modelos Estadísticos y Predictivos")
+        if st.button("1️⃣ Modelo Regresión Binomial Negativa / SPF (AASHTO HSM)"):
+            ir_a('modelo', 1)
+        if st.button("2️⃣ Estimación por Máxima Verosimilitud (MLE)"):
+            ir_a('modelo', 2)
+        if st.button("3️⃣ Método Bayesiano Empírico (EB) - Puntos Negros"):
+            ir_a('modelo', 3)
+            
+    with col2:
+        st.markdown("### 🚗 Modelos Físicos, Severidad y Carga (SAE / NTSB)")
+        if st.button("4️⃣ Modelo Logit de Severidad de Lesiones"):
+            ir_a('modelo', 4)
+        if st.button("5️⃣ Distancia de Parada (Vehículos Livianos - SAE)"):
+            ir_a('modelo', 5)
+        if st.button("6️⃣ Frenado en Vehículos Pesados y Articulados (Air Brake Lag)"):
+            ir_a('modelo', 6)
+
+    st.markdown("---")
+    col_a, col_b, col_c = st.columns([1, 2, 1])
+    with col_b:
+        if st.button("🔴 Salir de la Aplicación"):
+            ir_a('confirmar_salida')
+
+# ==========================================
+# PANTALLA DE CONFIRMACIÓN DE SALIDA
+# ==========================================
+elif st.session_state.pantalla == 'confirmar_salida':
+    st.warning("⚠️ **Aviso de Salida**")
+    st.write("¿Está seguro de que desea cerrar la sesión actual de trabajo?")
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("✅ Sí, Salir"):
+            st.success("Sesión finalizada. Puede cerrar esta pestaña.")
+            st.stop()
+    with col2:
+        if st.button("❌ Cancelar y Volver al Menú"):
+            ir_a('menu')
+
+# ==========================================
+# 3. PANTALLAS DE DESARROLLO DE MODELOS
+# ==========================================
+elif st.session_state.pantalla == 'modelo':
+    m = st.session_state.modelo_seleccionado
+    
+    if st.button("⬅️ Regresar al Menú Principal"):
+        ir_a('menu')
+    st.markdown("---")
+
+    # MODELO 1
+    if m == 1:
+        st.header("1️⃣ Modelo de Frecuencia de Siniestros (SPF - AASHTO HSM)")
+        st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/c/cd/Highway_intersection.jpg/640px-Highway_intersection.jpg", 
+                 caption="Aplicación: Estimación del número anual esperado de accidentes en tramos de carretera.", use_container_width=True)
+        st.latex(r"N_{pred} = \exp\left(\beta_0 + \beta_1 \cdot \ln(\text{AADT}) + \ln(L)\right) \cdot \prod CMF_i")
+        
+        c1, c2 = st.columns(2)
+        with c1:
+            aadt = st.number_input("Tránsito Promedio Diario Anual (AADT) [veh/día]:", value=5000, step=100)
+            length = st.number_input("Longitud del tramo (L) [km]:", value=2.5, step=0.1)
+        with c2:
+            beta0 = st.number_input("Intercepto (β₀):", value=-6.5, step=0.1)
+            beta1 = st.number_input("Coeficiente de Tráfico (β₁):", value=0.85, step=0.05)
+            cmf = st.number_input("Factor de Modificación de Siniestros (CMF):", value=1.1, step=0.05)
+
+        tab1, tab2, tab3 = st.tabs(["🧮 Cálculo y Respuesta", "📐 Paso a Paso", "📖 Guía Explicativa & Origen"])
+        with tab1:
+            n_base = np.exp(beta0 + beta1 * np.log(aadt) + np.log(length))
+            n_final = n_base * cmf
+            st.success(f"**Resultado:** Se estiman **{n_final:.2f} accidentes/año**.")
+        with tab2:
+            st.markdown(f"""
+            1. **Cálculo de la media base:** $N_{{base}} = \\exp({beta0} + {beta1} \\cdot \\ln({aadt}) + \\ln({length})) = {n_base:.4f}$
+            2. **Aplicación CMF:** $N_{{pred}} = {n_base:.4f} \\cdot {cmf} = \\mathbf{{{n_final:.2f}}}$
+            """)
+        with tab3:
+            st.markdown("* **Origen Normativo:** *AASHTO Highway Safety Manual (HSM) - Parte C*.")
+
+    # MODELO 2
+    elif m == 2:
+        st.header("2️⃣ Estimación por Máxima Verosimilitud (MLE)")
+        st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/1/10/Normal_Distribution_PDF.svg/640px-Normal_Distribution_PDF.svg.png", 
+                 caption="Aplicación: Optimización de parámetros estadísticos para modelos de conteo.", use_container_width=True)
+        st.latex(r"\ln L(\beta_0, \beta_1) = \sum_{i=1}^{n} \left[ y_i (\beta_0 + \beta_1 x_i) - \exp(\beta_0 + \beta_1 x_i) - \ln(y_i!) \right]")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            y_i = st.number_input("Accidentes Observados ($y_i$):", value=4, step=1)
+            x_i = st.number_input("Log-Tráfico ($x_i$):", value=7.5, step=0.1)
+        with col2:
+            b0_test = st.number_input("Valor de prueba β₀:", value=-4.0, step=0.1)
+            b1_test = st.number_input("Valor de prueba β₁:", value=0.7, step=0.05)
+
+        tab1, tab2, tab3 = st.tabs(["🧮 Cálculo y Respuesta", "📐 Paso a Paso", "📖 Guía Explicativa & Origen"])
+        with tab1:
+            mu_i = np.exp(b0_test + b1_test * x_i)
+            log_lik = y_i * (b0_test + b1_test * x_i) - mu_i
+            st.info(f"**Media Predicha ($\mu_i$):** {mu_i:.2f}")
+            st.success(f"**Log-Verosimilitud ($\ln L_i$):** {log_lik:.4f}")
+        with tab2:
+            st.markdown(f"$$\\mu_i = \\exp({b0_test} + {b1_test} \\cdot {x_i}) = {mu_i:.4f}$$")
+            st.markdown(f"$$\\ln L_i = {y_i}({b0_test + b1_test*x_i:.2f}) - {mu_i:.4f} = \\mathbf{{{log_lik:.4f}}}$$")
+        with tab3:
+            st.markdown("* **Origen Normativo:** *AASHTO HSM / Métodos Econométricos*.")
+
+    # MODELO 3
+    elif m == 3:
+        st.header("3️⃣ Método Bayesiano Empírico (EB) - Puntos Negros")
+        st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/0/01/Road_construction_in_Germany.jpg/640px-Road_construction_in_Germany.jpg", 
+                 caption="Aplicación: Corrección del sesgo de regresión a la media.", use_container_width=True)
+        st.latex(r"N_{esperado} = w \cdot N_{obs} + (1 - w) \cdot N_{pred}, \quad w = \frac{1}{1 + k \cdot \sum N_{pred}}")
+
+        col1, col2 = st.columns(2)
+        with col1:
+            n_obs = st.number_input("Accidentes Observados ($N_{obs}$):", value=12, step=1)
+            n_pred = st.number_input("Accidentes Predichos ($N_{pred}$):", value=6.5, step=0.1)
+        with col2:
+            k_disp = st.number_input("Parámetro Dispersión ($k$):", value=0.25, step=0.01)
+
+        tab1, tab2, tab3 = st.tabs(["🧮 Cálculo y Respuesta", "📐 Paso a Paso", "📖 Guía Explicativa & Origen"])
+        with tab1:
+            w = 1 / (1 + k_disp * n_pred)
+            n_eb = w * n_obs + (1 - w) * n_pred
+            st.success(f"**Frecuencia Esperada Ajustada ($N_{{esperado}}$):** **{n_eb:.2f} accidentes/año**")
+        with tab2:
+            st.markdown(f"$$w = \\frac{{1}}{{1 + {k_disp} \\cdot {n_pred}}} = {w:.4f}$$")
+            st.markdown(f"$$N_{{esperado}} = ({w:.4f} \\cdot {n_obs}) + ((1 - {w:.4f}) \\cdot {n_pred}) = \\mathbf{{{n_eb:.2f}}}$$")
+        with tab3:
+            st.markdown("* **Origen Normativo:** *AASHTO HSM Cap. 3*.")
+
+    # MODELO 4
+    elif m == 4:
+        st.header("4️⃣ Modelo Logit de Severidad de Lesiones")
+        st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/6/6e/Car_crash_1.jpg/640px-Car_crash_1.jpg", 
+                 caption="Aplicación: Estimación de la probabilidad de lesión grave.", use_container_width=True)
+        st.latex(r"P(Y = Grave) = \frac{\exp(\beta_0 + \beta_v \cdot V)}{1 + \exp(\beta_0 + \beta_v \cdot V)}")
+
+        col1, col2 = st.columns(2)
+        with col1:
+            v_impact = st.number_input("Velocidad de Impacto (V) [km/h]:", value=85, step=5)
+        with col2:
+            b0_logit = st.number_input("Intercepto (β₀):", value=-3.5, step=0.1)
+            bv_logit = st.number_input("Coeficiente Velocidad (β_v):", value=0.045, step=0.005)
+
+        tab1, tab2, tab3 = st.tabs(["🧮 Cálculo y Respuesta", "📐 Paso a Paso", "📖 Guía Explicativa & Origen"])
+        with tab1:
+            z = b0_logit + bv_logit * v_impact
+            prob = np.exp(z) / (1 + np.exp(z))
+            st.error(f"**Probabilidad de Lesión Grave / Fatalidad:** **{prob*100:.2f}%**")
+        with tab2:
+            st.markdown(f"$$z = {b0_logit} + ({bv_logit} \\cdot {v_impact}) = {z:.4f}$$")
+            st.markdown(f"$$P = \\frac{{\\exp({z:.4f})}}{{1 + \\exp({z:.4f})}} = \\mathbf{{{prob*100:.2f}\\%}}$$")
+        with tab3:
+            st.markdown("* **Origen Normativo:** *NTSB / SAE Crashworthiness*.")
+
+    # MODELO 5
+    elif m == 5:
+        st.header("5️⃣ Distancia de Parada (Vehículos Livianos - SAE J2244)")
+        st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/d/d7/Braking_distance.svg/640px-Braking_distance.svg.png", 
+                 caption="Aplicación: Reconstrucción de velocidad en vehículos livianos.", use_container_width=True)
+        st.latex(r"d_{total} = \left(\frac{V}{3.6}\right) \cdot t_r + \frac{\left(\frac{V}{3.6}\right)^2}{2 \cdot g \cdot (f \pm G)}")
+
+        c1, c2 = st.columns(2)
+        with c1:
+            v_kmh = st.number_input("Velocidad (V) [km/h]:", value=90.0, step=5.0)
+            t_r = st.number_input("Tiempo de Reacción ($t_r$) [s]:", value=2.5, step=0.1)
+        with c2:
+            f_fric = st.number_input("Fricción ($f$):", value=0.35, step=0.05)
+            grade = st.number_input("Pendiente ($G$) [ej. 0.02]:", value=0.0, step=0.01)
+
+        tab1, tab2, tab3 = st.tabs(["🧮 Cálculo y Respuesta", "📐 Paso a Paso", "📖 Guía Explicativa & Origen"])
+        with tab1:
+            v_ms = v_kmh / 3.6
+            d_reac = v_ms * t_r
+            d_fren = (v_ms**2) / (2 * 9.81 * (f_fric + grade))
+            d_tot = d_reac + d_fren
+            st.success(f"**Distancia de Parada Total:** **{d_tot:.2f} metros**")
+        with tab2:
+            st.markdown(f"$$d_{{total}} = ({v_ms:.2f} \\cdot {t_r}) + \\frac{{({v_ms:.2f})^2}}{{2 \\cdot 9.81 \\cdot ({f_fric} + {grade})}} = \\mathbf{{{d_tot:.2f} \\text{{ m}}}}$$")
+        with tab3:
+            st.markdown("* **Origen Normativo:** *SAE J2244 / AASHTO Green Book*.")
+
+    # MODELO 6: NUEVO - VEHÍCULOS PESADOS Y ARTICULADOS
+    elif m == 6:
+        st.header("6️⃣ Cinemática de Frenado para Vehículos Pesados y Articulados (Air Brake Lag)")
+        st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/6/69/Semi-trailer_truck_on_highway.jpg/640px-Semi-trailer_truck_on_highway.jpg", 
+                 caption="Aplicación: Reconstrucción de accidentes y análisis de distancia de frenado en camiones pesados y tractocamiones articulados con frenos neumáticos.", use_container_width=True)
+
+        st.subheader("Fórmula Matemática con Retardo Neumático")
+        st.latex(r"d_{total} = \left(\frac{V}{3.6}\right) \cdot (t_r + t_{lag}) + \frac{\left(\frac{V}{3.6}\right)^2}{2 \cdot g \cdot (f \pm G)}")
+
+        c1, c2 = st.columns(2)
+        with c1:
+            v_kmh_h = st.number_input("Velocidad del Vehículo Pesado (V) [km/h]:", value=80.0, step=5.0)
+            t_r_h = st.number_input("Tiempo de Reacción del Conductor ($t_r$) [s]:", value=2.0, step=0.1)
+        with c2:
+            tipo_veh = st.selectbox("Configuración Vehicular:", [
+                "Camión Rígido de 2 ejes (t_lag = 0.4 s)", 
+                "Camión Rígido Pesado 3-4 ejes (t_lag = 0.5 s)", 
+                "Tractocamión Articulado Simple / Semi-trailer (t_lag = 0.7 s)", 
+                "Tractocamión Articulado Doble / B-Train / Full (t_lag = 1.0 s)"
+            ])
+            # Asignar t_lag según selección
+            if "2 ejes" in tipo_veh: t_lag = 0.4
+            elif "3-4 ejes" in tipo_veh: t_lag = 0.5
+            elif "Simple" in tipo_veh: t_lag = 0.7
+            else: t_lag = 1.0
+            
+            st.write(f"⏱️ **Retardo de Aire Asignado ($t_{{lag}}$):** **{t_lag} s**")
+            
+        c3, c4 = st.columns(2)
+        with c3:
+            f_fric_h = st.number_input("Coeficiente de Fricción Pavimento-Neumático ($f$):", value=0.45, step=0.05, key="f_h")
+        with c4:
+            grade_h = st.number_input("Pendiente Longitudinal ($G$) [ej. -0.03 = bajada 3%]:", value=0.0, step=0.01, key="g_h")
+
+        tab1, tab2, tab3 = st.tabs(["🧮 Cálculo y Respuesta", "📐 Paso a Paso", "📖 Guía Explicativa & Origen"])
+        
+        with tab1:
+            v_ms_h = v_kmh_h / 3.6
+            tiempo_total_percepcion = t_r_h + t_lag
+            d_reac_h = v_ms_h * tiempo_total_percepcion
+            d_fren_h = (v_ms_h**2) / (2 * 9.81 * (f_fric_h + grade_h))
+            d_tot_h = d_reac_h + d_fren_h
+            
+            st.info(f"**Tiempo Total Antes de Frenar (Reacción + Retardo de Aire):** {tiempo_total_percepcion:.2f} s")
+            st.info(f"**Distancia recorrida durante el retardo/reacción:** {d_reac_h:.2f} m")
+            st.info(f"**Distancia de frenado puro con carga:** {d_fren_h:.2f} m")
+            st.success(f"**Distancia de Parada Total del Vehículo Articulado ($d_{{total}}$):** **{d_tot_h:.2f} metros**")
+
+        with tab2:
+            st.markdown(f"""
+            1. **Velocidad en m/s:** 
+               $$v = \\frac{{{v_kmh_h}}}{{3.6}} = {v_ms_h:.2f} \\text{{ m/s}}$$
+            2. **Distancia previa al frenado (Reacción + Retardo Neumático):** 
+               $$d_{{reacción}} = {v_ms_h:.2f} \\cdot ({t_r_h} + {t_lag}) = {v_ms_h:.2f} \\cdot {tiempo_total_percepcion} = {d_reac_h:.2f} \\text{{ m}}$$
+            3. **Distancia de frenado con fricción y pendiente:** 
+               $$d_{{frenado}} = \\frac{{({v_ms_h:.2f})^2}}{{2 \\cdot 9.81 \\cdot ({f_fric_h} + {grade_h})}} = {d_fren_h:.2f} \\text{{ m}}$$
+            4. **Distancia de Parada Total:** 
+               $$d_{{total}} = {d_reac_h:.2f} + {d_fren_h:.2f} = \\mathbf{{{d_tot_h:.2f} \\text{{ metros}}}}$$
+            """)
+
+        with tab3:
+            st.markdown("""
+            * **¿Por qué los articulados frenan distinto?** Los tractocamiones y trailers emplean sistemas de frenos neumáticos de aire. El aire comprimido requiere un tiempo de propagación a través de las mangueras y válvulas de relé hacia los ejes posteriores del semi-remolque (*Air Brake Lag*).
+            * **Efecto Articulado:** En combinaciones pesadas (como Full o B-Train), el retardo de aire acumulado incrementa notablemente la distancia antes de que el sistema de frenado empiece a disipar energía cinética.
+            * **Origen Normativo:** *SAE J2244, SAE J2944 y NTSB Commercial Vehicle Accident Investigation Standards*.
+            """)
